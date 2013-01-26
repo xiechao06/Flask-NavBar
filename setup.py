@@ -4,7 +4,7 @@ from setuptools.command.test import test as TestCommand
 import sys
 import os.path
 
-PACKAGE = "flask_navbar"
+PACKAGE = "flask_nav_bar"
 NAME = "Flask-NavBar"
 DESCRIPTION = "a navigator bar widgets"
 AUTHOR = __import__(PACKAGE).__author__
