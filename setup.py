@@ -21,7 +21,7 @@ setup(
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
     license="MIT",
-    py_modules=["flask_navbar"],
+    py_modules=["flask_nav_bar"],
     include_package_data=True,
     zip_safe=False,
     install_requires=open("requirements.txt").readlines(),
