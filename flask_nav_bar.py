@@ -1,3 +1,4 @@
+
 # -*- coding: UTF-8 -*-
 """
 flask_navbar.py
@@ -6,7 +7,6 @@ __author__ = "xiechao"
 __author_email__ = "xiechao06@gmail.com"
 __version__ = "0.9.0"
 
-from collections import namedtuple
 from flask import url_for, request
 from flask.ext.principal import Permission
 from flask.templating import render_template_string
@@ -25,7 +25,18 @@ ul
         
 """
 
-NavLink = namedtuple("NavLink", ["name", "anchor", "permissions", "url"])
+class NavLink(object):
+
+    def __init__(self, name, anchor, permissions, url):
+        self.name = name
+        self.anchor = anchor
+        self.permissions = permissions
+        self.__url = url
+        
+    @property
+    def url(self):
+        return self.__url()
+        
 
 class FlaskNavBar(object):
 
@@ -38,7 +49,13 @@ class FlaskNavBar(object):
     def register(self, blueprint, default_url="", name="", permissions=[]):
         if self.__all_nav_links.has_key(blueprint.name):
             raise RunTimeError("blueprint %s has been registered" % blueprint.name)
-        self.__all_nav_links[blueprint.name] = NavLink(blueprint.name, blueprint.name if not name else name, permissions, default_url)
+        from flask import url_for
+        from werkzeug.routing import BuildError
+        try:
+            url = lambda: (default_url if default_url else url_for(blueprint.name+".index"))
+        except BuildError:
+            raise RunTimeError("you must provide default url if there's no index in blueprint "+blueprint.name)
+        self.__all_nav_links[blueprint.name] = NavLink(blueprint.name, blueprint.name if not name else name, permissions, url)
         
     @property
     def nav_links(self):
@@ -66,7 +83,7 @@ if __name__ == "__main__":
     app.jinja_env.add_extension('pyjade.ext.jinja.PyJadeExtension')
 
     test1 = Blueprint("test1", __name__)
-    @test1.route("/")
+    @test1.route("/index.html")
     def index():
         return "test1"
     app.register_blueprint(test1, url_prefix="/test1")
@@ -87,7 +104,7 @@ if __name__ == "__main__":
         def can(self):
             return False
     
-    nav_bar.register(test1, "/test1/index")
+    nav_bar.register(test1)
     nav_bar.register(test2, "/test2/index")
     nav_bar.register(test3, "/test2/index", permissions=[FakePermission()])
     
