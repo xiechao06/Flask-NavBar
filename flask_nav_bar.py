@@ -14,74 +14,80 @@ import jinja2
 
 
 
+#ul_tpl = """
+
+#ul
+    #each nav_link in nav_links
+        #if request.blueprint == nav_link.name:
+            #li(class=highlight_class): a(href=nav_link.url): strong= nav_link.anchor
+        #else:
+            #li(class=normal_class): a(href=nav_link.url)= nav_link.anchor
+
+#"""
+
 ul_tpl = """
 
-ul
-    each nav_link in nav_links
-        if request.blueprint == nav_link.name:
-            li(class=highlight_class): a(href=nav_link.url): strong= nav_link.anchor
-        else:
-            li(class=normal_class): a(href=nav_link.url)= nav_link.anchor
-        
+<ul>
+{% for nav_link in nav_links %}
+
+{% if request.blueprint == nav_link.name %}
+    <li class="{{highlight_class}}">
+    	<a href="{{nav_link.url}}">
+            <strong>{{nav_link.anchor}}</strong>
+        </a>
+    </li>
+{% else %}
+    <li class="{{normal_class}}">
+    	<a href="{{nav_link.url}}">{{nav_link.anchor}}</a>
+    </li>
+{% endif %}
+
+{% endfor %}
+</ul>
+
 """
 
 class NavLink(object):
 
-    def __init__(self, name, anchor, permissions, url):
+    def __init__(self, name, anchor, permissions, lazy_url):
         self.name = name
         self.anchor = anchor
         self.permissions = permissions
-        self.__url = url
+        self.__lazy_url = lazy_url
         
     @property
     def url(self):
-        return self.__url()
-        
+        return self.__lazy_url()
 
 class FlaskNavBar(object):
 
-    def __init__(self, app, highlight_class="", normal_class=""):
+    def __init__(self, app):
         self.app = app
-        self.__all_nav_links = {}
-        self.highlight_class = highlight_class
-        self.normal_class = normal_class
+        self.__all_nav_links = []
     
     def register(self, blueprint, default_url="", name="", permissions=[]):
-        if self.__all_nav_links.has_key(blueprint.name):
-            raise RunTimeError("blueprint %s has been registered" % blueprint.name)
         from flask import url_for
-        from werkzeug.routing import BuildError
-        try:
-            url = lambda: (default_url if default_url else url_for(blueprint.name+".index"))
-        except BuildError:
-            raise RunTimeError("you must provide default url if there's no index in blueprint "+blueprint.name)
-        self.__all_nav_links[blueprint.name] = NavLink(blueprint.name, blueprint.name if not name else name, permissions, url)
+        url = lambda: (default_url if default_url else url_for(blueprint.name+".index"))
+        self.__all_nav_links.append(NavLink(blueprint.name, blueprint.name if not name else name, permissions, url))
         
     @property
     def nav_links(self):
-        for blueprint in self.app.blueprints.values():
-            try:
-                nav_link = self.__all_nav_links[blueprint.name]
-            except KeyError:
-                continue
-            
-            if all(perm.can() for perm in nav_link.permissions):
-                yield nav_link
-        
+        registered_bluprint_names = set(b.name for b in self.app.blueprints.values())
+        for nav_link in self.__all_nav_links:
+            if nav_link.name in registered_bluprint_names:
+                if all(perm.can() for perm in nav_link.permissions):
+                    yield nav_link
     
-    def as_ul(self):
+    def as_ul(self, highlight_class="", normal_class=""):
         return render_template_string(ul_tpl, nav_links=self.nav_links, 
-            highlight_class=self.highlight_class, 
-            normal_class=self.normal_class)
-    
+            highlight_class=highlight_class, 
+            normal_class=normal_class)
 
 if __name__ == "__main__":
     from flask import Flask, Blueprint
     app = Flask(__name__)
-    nav_bar = FlaskNavBar(app, highlight_class="highlight")
+    nav_bar = FlaskNavBar(app)
     
-    app.jinja_env.add_extension('pyjade.ext.jinja.PyJadeExtension')
-
     test1 = Blueprint("test1", __name__)
     @test1.route("/index.html")
     def index():
@@ -103,12 +109,21 @@ if __name__ == "__main__":
     class FakePermission(object):
         def can(self):
             return False
+
+    test4 = Blueprint("test4", __name__)
+    @test3.route("/")
+    def index():
+        return "test4"
     
     nav_bar.register(test1)
     nav_bar.register(test2, "/test2/index")
-    nav_bar.register(test3, "/test2/index", permissions=[FakePermission()])
+    nav_bar.register(test3, "/test3/index", permissions=[FakePermission()])
+    nav_bar.register(test3, "/test3/index")
+    nav_bar.register(test4, "/test4/index")
     
     
-    with app.test_request_context("/test1/"):
-        print nav_bar.as_ul()
+    with app.test_request_context("/test1/index.html"):
+        from flask.templating import render_template_string
+        print render_template_string('<html>{{nav_bar.as_ul("highlight")|safe}}</html>', 
+                                    nav_bar=nav_bar)
         
