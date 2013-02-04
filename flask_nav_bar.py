@@ -27,7 +27,7 @@ import jinja2
 
 ul_tpl = """
 
-<ul>
+<ul class="nav">
 {% for nav_link in nav_links %}
 
 {% if request.blueprint == nav_link.name %}
