@@ -28,6 +28,7 @@ import jinja2
 ul_tpl = """
 
 <ul class="nav">
+   <div class="brand">{{ project_name }}</div>
 {% for nav_link in nav_links %}
 
 {% if request.blueprint == nav_link.name %}
@@ -61,8 +62,9 @@ class NavLink(object):
 
 class FlaskNavBar(object):
 
-    def __init__(self, app):
+    def __init__(self, app, project_name=""):
         self.app = app
+        self.project_name = project_name
         self.__all_nav_links = []
     
     def register(self, blueprint, default_url="", name="", permissions=[]):
@@ -80,6 +82,7 @@ class FlaskNavBar(object):
     
     def as_ul(self, highlight_class="", normal_class=""):
         return render_template_string(ul_tpl, nav_links=self.nav_links, 
+                                      project_name=self.project_name,
             highlight_class=highlight_class, 
             normal_class=normal_class)
 
