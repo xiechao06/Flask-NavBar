@@ -7,6 +7,7 @@ __author__ = "xiechao"
 __author_email__ = "xiechao06@gmail.com"
 __version__ = "0.9.0"
 
+from collections import OrderedDict
 from flask import url_for, request
 from flask.ext.principal import Permission
 from flask.templating import render_template_string
@@ -48,13 +49,61 @@ ul_tpl = """
 
 """
 
+ul_tpl_grouped = """
+
+<ul class="nav">
+   <div class="brand">{{ project_name }}</div>
+   {% for group, (highlighted, links) in nav_group_d.items() %}
+    <li class={% if highlighted %}"{{ highlight_class }}"{% else %}"{{ normal_class }}"{% endif %}>
+       <a href="{{links[0].url}}">
+        {% if highlighted %}
+          <strong>
+        {% endif %}
+            {{ group }}
+        {% if highlighted %}
+          </strong>
+        {% endif %}
+       </a>
+    </li>
+    {% if links|length > 1 %} 
+       <li class="dropdown {% if highlighted %}{{ highlight_class }}{% else %}{{ normal_class }}{% endif %}">
+           <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+            <b class="caret"></b>
+           </a>
+           <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+               {% for nav_link in links %}
+                {% if request.blueprint == nav_link.name %}
+                    <li class="{{highlight_class}}">
+                        <a href="{{nav_link.url}}">
+                            <strong>{{nav_link.anchor}}</strong>
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="{{normal_class}}">
+                        <a href="{{nav_link.url}}">{{nav_link.anchor}}</a>
+                    </li>
+                {% endif %}
+               {% endfor %}
+           </ul>
+       </li>
+    {% endif %}
+   {% endfor %}
+</ul>
+<script type="text/javascript">
+    $(function () {
+        $(".dropdown-toggle").dropdown(); 
+    });
+</script>
+"""
+
 class NavLink(object):
 
-    def __init__(self, name, anchor, permissions, lazy_url):
+    def __init__(self, name, anchor, permissions, lazy_url, group):
         self.name = name
         self.anchor = anchor
         self.permissions = permissions
         self.__lazy_url = lazy_url
+        self.group = group
         
     @property
     def url(self):
@@ -67,10 +116,12 @@ class FlaskNavBar(object):
         self.project_name = project_name
         self.__all_nav_links = []
     
-    def register(self, blueprint, default_url="", name="", permissions=[]):
+    def register(self, blueprint, default_url="", name="", permissions=[], group=""):
         from flask import url_for
         url = lambda: (default_url if default_url else url_for(blueprint.name+".index"))
-        self.__all_nav_links.append(NavLink(blueprint.name, blueprint.name if not name else name, permissions, url))
+        name = name or blueprint.name
+        group = group or name
+        self.__all_nav_links.append(NavLink(blueprint.name, name, permissions, url, group))
         
     @property
     def nav_links(self):
@@ -80,11 +131,26 @@ class FlaskNavBar(object):
                 if all(perm.can() for perm in nav_link.permissions):
                     yield nav_link
     
-    def as_ul(self, highlight_class="", normal_class=""):
-        return render_template_string(ul_tpl, nav_links=self.nav_links, 
-                                      project_name=self.project_name,
-            highlight_class=highlight_class, 
-            normal_class=normal_class)
+    def as_ul(self, highlight_class="", normal_class="", grouped=False):
+        if not grouped:
+            return render_template_string(ul_tpl, nav_links=self.nav_links, 
+                                          project_name=self.project_name,
+                                          highlight_class=highlight_class, 
+                                          normal_class=normal_class)
+        else:
+            nav_group_d = OrderedDict()
+            for link in self.nav_links:
+                if link.group not in nav_group_d:
+                    nav_group_d[link.group] = [False, []]
+                nav_group_d[link.group][1].append(link)
+            for link in self.nav_links:
+                if request.blueprint == link.name:
+                    nav_group_d[link.group][0] = True
+                    break
+            return render_template_string(ul_tpl_grouped, nav_group_d=nav_group_d, 
+                                          project_name=self.project_name,
+                                          highlight_class=highlight_class, 
+                                          normal_class=normal_class)
 
 if __name__ == "__main__":
     from flask import Flask, Blueprint
@@ -119,14 +185,16 @@ if __name__ == "__main__":
         return "test4"
     
     nav_bar.register(test1)
-    nav_bar.register(test2, "/test2/index")
+    nav_bar.register(test2, "/test2/index", group="test1")
     nav_bar.register(test3, "/test3/index", permissions=[FakePermission()])
     nav_bar.register(test3, "/test3/index")
     nav_bar.register(test4, "/test4/index")
     
     
-    with app.test_request_context("/test1/index.html"):
+    with app.test_request_context("/test2/index.html"):
         from flask.templating import render_template_string
+        print render_template_string('<html>{{nav_bar.as_ul("highlight", grouped=True)|safe}}</html>', 
+                                    nav_bar=nav_bar)
         print render_template_string('<html>{{nav_bar.as_ul("highlight")|safe}}</html>', 
                                     nav_bar=nav_bar)
         
