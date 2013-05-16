@@ -3,16 +3,10 @@
 """
 flask_navbar.py
 """
-__author__ = "xiechao"
-__author_email__ = "xiechao06@gmail.com"
-__version__ = "0.9.0"
 
 from collections import OrderedDict
-from flask import url_for, request
-from flask.ext.principal import Permission
+from flask import request
 from flask.templating import render_template_string
-import jinja2
-
 
 
 #ul_tpl = """
@@ -116,7 +110,9 @@ class FlaskNavBar(object):
         self.project_name = project_name
         self.__all_nav_links = []
     
-    def register(self, blueprint, default_url="", name="", permissions=[], group=""):
+    def register(self, blueprint, default_url="", name="", permissions=None, group=""):
+        if not permissions:
+            permissions = []
         from flask import url_for
         url = lambda: (default_url if default_url else url_for(blueprint.name+".index"))
         name = name or blueprint.name
