@@ -66,7 +66,7 @@ ul_tpl_grouped = """
            </a>
            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
                {% for nav_link in links %}
-                {% if request.blueprint == nav_link.name %}
+                {% if nav_link.enabled() %}
                     <li class="{{highlight_class}}">
                         <a href="{{nav_link.url}}">
                             <strong>{{nav_link.anchor}}</strong>
@@ -92,12 +92,16 @@ ul_tpl_grouped = """
 
 class NavLink(object):
 
-    def __init__(self, name, anchor, permissions, lazy_url, group):
+    def __init__(self, name, anchor, permissions, lazy_url, group, enabler):
         self.name = name
         self.anchor = anchor
         self.permissions = permissions
         self.__lazy_url = lazy_url
         self.group = group
+        self.enabler = enabler
+
+    def enabled(self):
+        return self.enabler(self)
         
     @property
     def url(self):
@@ -110,14 +114,15 @@ class FlaskNavBar(object):
         self.project_name = project_name
         self.__all_nav_links = []
     
-    def register(self, blueprint, default_url="", name="", permissions=None, group=""):
+    def register(self, blueprint, default_url="", name="", permissions=None, group="", enabler=None):
         if not permissions:
             permissions = []
         from flask import url_for
         url = lambda: (default_url if default_url else url_for(blueprint.name+".index"))
         name = name or blueprint.name
         group = group or name
-        self.__all_nav_links.append(NavLink(blueprint.name, name, permissions, url, group))
+        enabler = enabler or (lambda nav: nav.name==request.blueprint)
+        self.__all_nav_links.append(NavLink(blueprint.name, name, permissions, url, group, enabler))
         
     @property
     def nav_links(self):
