@@ -29,7 +29,7 @@ ul_tpl = """
 {% if request.blueprint == nav_link.name %}
     <li class="{{highlight_class}}">
     	<a href="{{nav_link.url}}">
-            <strong>{{nav_link.anchor}}</strong>
+            <strong>{{ nav_link.anchor }}</strong>
         </a>
     </li>
 {% else %}
@@ -94,11 +94,25 @@ class NavLink(object):
 
     def __init__(self, name, anchor, permissions, lazy_url, group, enabler):
         self.name = name
-        self.anchor = anchor
+        self._anchor = anchor
         self.permissions = permissions
         self.__lazy_url = lazy_url
-        self.group = group
+        self._group = group
         self.enabler = enabler
+
+    @property
+    def anchor(self):
+        if isinstance(self._anchor, basestring):
+            return self._anchor
+        else:
+            return self._anchor()
+
+    @property
+    def group(self):
+        if isinstance(self._group, basestring):
+            return self._group
+        else:
+            return self._group()
 
     def enabled(self):
         return self.enabler(self)
