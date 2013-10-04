@@ -1,25 +1,26 @@
 from distutils.core import setup
-
-__author__ = "xiechao"
-__author_email__ = "xiechao06@gmail.com"
-__version__ = "0.9.0"
+from setuptools import find_packages
 
 PACKAGE = "flask_nav_bar"
-NAME = "Flask-NavBar"
-DESCRIPTION = "a navigator bar widgets"
+NAME = "flask-navbar"
+DESCRIPTION = "a navigation bar widget for flask"
+AUTHOR = 'xiechao'
+AUTHOR_EMAIL = 'xiechao06@gmail.com'
 URL = ""
+VERSION = '0.9.0'
+DOC = ''
 
 setup(
     name=NAME,
-    version=__version__,
+    version=VERSION,
     long_description=__doc__,
     description=DESCRIPTION,
-    author=__author__,
-    author_email=__author_email__,
+    author=AUTHOR,
+    author_email=AUTHOR_EMAIL,
     license="MIT",
     py_modules=["flask_nav_bar"],
     include_package_data=True,
     zip_safe=False,
-    install_requires=open("requirements.txt").readlines(),
+    install_requires=open('requirements.txt').readlines(),
 )
 
