@@ -21,84 +21,76 @@ from flask.templating import render_template_string
 #"""
 
 ul_tpl = """
-
-<ul class="nav">
-   <div class="brand">{{ project_name }}</div>
-{% for nav_link in nav_links %}
-
-{% if request.blueprint == nav_link.name %}
-    <li class="{{highlight_class}}">
-    	<a href="{{nav_link.url}}">
-            <strong>{{ nav_link.anchor }}</strong>
+<ul class="nav navbar-nav">
+  {% for nav_link in nav_links %}
+    {% if request.blueprint == nav_link.name %}
+      <li class="{{ highlight_class }}">
+        <a href="{{ nav_link.url }}">
+          <strong>{{ nav_link.anchor }}</strong>
         </a>
-    </li>
-{% else %}
-    <li class="{{normal_class}}">
-    	<a href="{{nav_link.url}}">{{nav_link.anchor}}</a>
-    </li>
-{% endif %}
-
-{% endfor %}
+      </li>
+    {% else %}
+      <li class="{{ normal_class }}">
+        <a href="{{ nav_link.url }}">{{ nav_link.anchor }}</a>
+      </li>
+    {% endif %}
+  {% endfor %}
 </ul>
-
 """
 
 ul_tpl_grouped = """
-
-<ul class="nav">
-   <div class="brand">{{ project_name }}</div>
-   {% for group, (highlighted, links) in nav_group_d.items() %}
+<ul class="nav navbar-nav">
+  {% for group, (highlighted, links) in nav_group_d.items() %}
     <li class={% if highlighted %}"{{ highlight_class }}"{% else %}"{{ normal_class }}"{% endif %}>
-       <a href="{{links[0].url}}">
-        {% if highlighted %}
-          <strong>
-        {% endif %}
-            {{ group }}
-        {% if highlighted %}
-          </strong>
-        {% endif %}
-       </a>
+    <a href="{{ links[0].url }}">
+      {% if highlighted %}
+        <strong>
+      {% endif %}
+      {{ group }}
+      {% if links[0].count is not none %}
+        <span class="badge">{{ links[0].count }}</span>
+      {% endif %}
+      {% if highlighted %}
+        </strong>
+      {% endif %}
+    </a>
     </li>
-    {% if links|length > 1 %} 
-       <li class="dropdown {% if highlighted %}{{ highlight_class }}{% else %}{{ normal_class }}{% endif %}">
-           <a class="dropdown-toggle" data-toggle="dropdown" href="#">
-            <b class="caret"></b>
-           </a>
-           <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
-               {% for nav_link in links %}
-                {% if nav_link.enabled() %}
-                    <li class="{{highlight_class}}">
-                        <a href="{{nav_link.url}}">
-                            <strong>{{nav_link.anchor}}</strong>
-                        </a>
-                    </li>
-                {% else %}
-                    <li class="{{normal_class}}">
-                        <a href="{{nav_link.url}}">{{nav_link.anchor}}</a>
-                    </li>
-                {% endif %}
-               {% endfor %}
-           </ul>
-       </li>
+    {% if links|length > 1 %}
+      <li class="dropdown {% if highlighted %}{{ highlight_class }}{% else %}{{ normal_class }}{% endif %}">
+        <a class="dropdown-toggle" data-toggle="dropdown" href="#">
+          <b class="caret"></b>
+        </a>
+        <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+          {% for nav_link in links %}
+            {% if nav_link.enabled() %}
+              <li class="{{ highlight_class }}">
+                <a href="{{ nav_link.url }}">
+                  <strong>{{ nav_link.anchor }}</strong>
+                </a>
+              </li>
+            {% else %}
+              <li class="{{ normal_class }}">
+                <a href="{{ nav_link.url }}">{{ nav_link.anchor }}</a>
+              </li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+      </li>
     {% endif %}
-   {% endfor %}
+  {% endfor %}
 </ul>
-<script type="text/javascript">
-    $(function () {
-        $(".dropdown-toggle").dropdown(); 
-    });
-</script>
 """
 
 class NavLink(object):
 
-    def __init__(self, name, anchor, permissions, lazy_url, group, enabler):
+    def __init__(self, name, anchor, permissions, lazy_url, group, enabler, cnt=None):
         self.name = name
         self._anchor = anchor
         self.permissions = permissions
         self.__lazy_url = lazy_url
         self._group = group
         self.enabler = enabler
+        self.count = cnt
 
     @property
     def anchor(self):
@@ -121,22 +113,22 @@ class NavLink(object):
     def url(self):
         return self.__lazy_url()
 
-class FlaskNavBar(object):
 
+class FlaskNavBar(object):
     def __init__(self, app, project_name=""):
         self.app = app
         self.project_name = project_name
         self.__all_nav_links = []
     
-    def register(self, blueprint, default_url="", name="", permissions=None, group="", enabler=None):
+    def register(self, blueprint, default_url="", name="", permissions=None, group="", enabler=None, count=None):
         if not permissions:
             permissions = []
         from flask import url_for
         url = lambda: (default_url if default_url else url_for(blueprint.name+".index"))
         name = name or blueprint.name
         group = group or name
-        enabler = enabler or (lambda nav: nav.name==request.blueprint)
-        self.__all_nav_links.append(NavLink(blueprint.name, name, permissions, url, group, enabler))
+        enabler = enabler or (lambda nav: nav.name == request.blueprint)
+        self.__all_nav_links.append(NavLink(blueprint.name, name, permissions, url, group, enabler, count))
         
     @property
     def nav_links(self):
