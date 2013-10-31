@@ -4,6 +4,7 @@
 flask_navbar.py
 """
 
+import types
 from collections import OrderedDict
 from flask import request
 from flask.templating import render_template_string
@@ -47,7 +48,7 @@ ul_tpl_grouped = """
         <strong>
       {% endif %}
       {{ group }}
-      {% if links[0].count is not none %}
+      {% if links[0]._count is not none %}
         <span class="badge">{{ links[0].count }}</span>
       {% endif %}
       {% if highlighted %}
@@ -90,14 +91,14 @@ class NavLink(object):
         self.__lazy_url = lazy_url
         self._group = group
         self.enabler = enabler
-        self.__count__ = cnt
+        self._count = cnt
 
     @property
     def count(self):
-        if isinstance(self.__count__, type):
-            return self.__count__()
+        if isinstance(self._count, types.FunctionType):
+            return self._count()
         else:
-            return self.__count__
+            return self._count
 
     @property
     def anchor(self):
