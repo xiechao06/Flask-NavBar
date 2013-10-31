@@ -90,7 +90,14 @@ class NavLink(object):
         self.__lazy_url = lazy_url
         self._group = group
         self.enabler = enabler
-        self.count = cnt
+        self.__count__ = cnt
+
+    @property
+    def count(self):
+        if isinstance(self.__count__, type):
+            return self.__count__()
+        else:
+            return self.__count__
 
     @property
     def anchor(self):
