@@ -11,17 +11,6 @@ from flask.templating import render_template_string
 import speaklater
 
 
-#ul_tpl = """
-
-#ul
-    #each nav_link in nav_links
-        #if request.blueprint == nav_link.name:
-            #li(class=highlight_class): a(href=nav_link.url): strong= nav_link.anchor
-        #else:
-            #li(class=normal_class): a(href=nav_link.url)= nav_link.anchor
-
-#"""
-
 ul_tpl = """
 <ul class="nav navbar-nav">
   {% for nav_link in nav_links %}
@@ -150,7 +139,7 @@ class FlaskNavBar(object):
                 if all(perm.can() for perm in nav_link.permissions):
                     yield nav_link
 
-    def as_ul(self, highlight_class="", normal_class="", grouped=False):
+    def as_ul(self, highlight_class="", normal_class="", grouped=True):
         if not grouped:
             return render_template_string(ul_tpl, nav_links=self.nav_links,
                                           project_name=self.project_name,
@@ -164,7 +153,7 @@ class FlaskNavBar(object):
                     nav_group_d[link.group] = [False, []]
                 nav_group_d[link.group][1].append(link)
             for link in self.nav_links:
-                if request.blueprint == link.name:
+                if link.enabled():
                     nav_group_d[link.group][0] = True
                     break
             return render_template_string(ul_tpl_grouped, nav_group_d=nav_group_d,
